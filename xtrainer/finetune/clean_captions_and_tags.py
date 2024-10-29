@@ -18,13 +18,11 @@ PATTERN_HAIR_CUT = re.compile(r', (bob|hime) cut, ')
 PATTERN_HAIR = re.compile(r', ([\w\-]+) hair, ')
 PATTERN_WORD = re.compile(r', ([\w\-]+|hair ornament), ')
 
-# 複数人がいるとき、複数の髪色や目の色が定義されていれば削除する
 PATTERNS_REMOVE_IN_MULTI = [
     PATTERN_HAIR_LENGTH,
     PATTERN_HAIR_CUT,
     re.compile(r', [\w\-]+ eyes, '),
     re.compile(r', ([\w\-]+ sleeves|sleeveless), '),
-    # 複数の髪型定義がある場合は削除する
     re.compile(
         r', (ponytail|braid|ahoge|twintails|[\w\-]+ bun|single hair bun|single side bun|two side up|two tails|[\w\-]+ braid|sidelocks), '),
 ]

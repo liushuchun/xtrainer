@@ -64,9 +64,9 @@ class ImageLoadingPrepDataset(torch.utils.data.Dataset):
         try:
             image = Image.open(img_path).convert("RGB")
             image = preprocess_image(image)
-            # tensor = torch.tensor(image) # これ Tensor に変換する必要ないな……(;･∀･)
+            # tensor = torch.tensor(image)
         except Exception as e:
-            logger.error(f"Could not load image path / 画像を読み込めません: {img_path}, error: {e}")
+            logger.error(f"Could not load image path: {img_path}, error: {e}")
             return None
 
         return (image, img_path)
@@ -87,8 +87,6 @@ def main(args):
     # repo id may be like "user/repo" or "user/repo/branch", so we need to remove slash
     model_location = os.path.join(args.model_dir, args.repo_id.replace("/", "_"))
 
-    # hf_hub_downloadをそのまま使うとsymlink関係で問題があるらしいので、キャッシュディレクトリとforce_filenameを指定してなんとかする
-    # depreacatedの警告が出るけどなくなったらその時
     # https://github.com/toriato/stable-diffusion-webui-wd14-tagger/issues/22
     if not os.path.exists(model_location) or args.force_download:
         os.makedirs(args.model_dir, exist_ok=True)
@@ -124,7 +122,6 @@ def main(args):
         if not os.path.exists(onnx_path):
             raise Exception(
                 f"onnx model not found: {onnx_path}, please redownload the model with --force_download"
-                + " / onnxモデルが見つかりませんでした。--force_downloadで再ダウンロードしてください"
             )
 
         model = onnx.load(onnx_path)
@@ -166,7 +163,6 @@ def main(args):
         model = load_model(f"{model_location}")
 
     # label_names = pd.read_csv("2022_0000_0899_6549/selected_tags.csv")
-    # 依存ライブラリを増やしたくないので自力で読むよ
 
     with open(os.path.join(model_location, CSV_FILE), "r", encoding="utf-8") as f:
         reader = csv.reader(f)
@@ -203,7 +199,7 @@ def main(args):
         tag_replacements = escaped_tag_replacements.split(";")
         for tag_replacement in tag_replacements:
             tags = tag_replacement.split(",")  # source, target
-            assert len(tags) == 2, f"tag replacement must be in the format of `source,target` / タグの置換は `置換元,置換先` の形式で指定してください: {args.tag_replacement}"
+            assert len(tags) == 2, f"tag replacement must be in the format of `source,target`: {args.tag_replacement}"
 
             source, target = [tag.replace("@@@@", ",").replace("####", ";") for tag in tags]
             logger.info(f"replacing tag: {source} -> {target}")
@@ -249,7 +245,6 @@ def main(args):
             character_tag_text = ""
             general_tag_text = ""
 
-            # 最初の4つ以降はタグなのでconfidenceがthreshold以上のものを追加する
             # First 4 labels are ratings, the rest are tags: pick any where prediction confidence >= threshold
             for i, p in enumerate(prob[4:]):
                 if i < len(general_tags) and p >= args.general_threshold:
@@ -270,7 +265,6 @@ def main(args):
                         else:
                             combined_tags.append(tag_name)
 
-            # 最初の4つはratingなのでargmaxで選ぶ
             # First 4 labels are actually ratings: pick one with argmax
             if args.use_rating_tags or args.use_rating_tags_as_last_tag:
                 ratings_probs = prob[:4]
@@ -285,7 +279,6 @@ def main(args):
                     else:
                         combined_tags.append(found_rating)
 
-            # 一番最初に置くタグを指定する
             # Always put some tags at the beginning
             if always_first_tags is not None:
                 for tag in always_first_tags:
@@ -293,7 +286,6 @@ def main(args):
                         combined_tags.remove(tag)
                         combined_tags.insert(0, tag)
 
-            # 先頭のカンマを取る
             if len(general_tag_text) > 0:
                 general_tag_text = general_tag_text[len(caption_separator) :]
             if len(character_tag_text) > 0:
@@ -328,7 +320,6 @@ def main(args):
                     logger.info(f"\tCharacter tags: {character_tag_text}")
                     logger.info(f"\tGeneral tags: {general_tag_text}")
 
-    # 読み込みの高速化のためにDataLoaderを使うオプション
     if args.max_data_loader_n_workers is not None:
         dataset = ImageLoadingPrepDataset(image_paths)
         data = torch.utils.data.DataLoader(
@@ -356,7 +347,7 @@ def main(args):
                         image = image.convert("RGB")
                     image = preprocess_image(image)
                 except Exception as e:
-                    logger.error(f"Could not load image path / 画像を読み込めません: {image_path}, error: {e}")
+                    logger.error(f"Could not load image path : {image_path}, error: {e}")
                     continue
             b_imgs.append((image_path, image))
 
@@ -381,65 +372,65 @@ def main(args):
 def setup_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "train_data_dir", type=str, help="directory for train images / 学習画像データのディレクトリ"
+        "train_data_dir", type=str, help="directory for train images "
     )
     parser.add_argument(
         "--repo_id",
         type=str,
         default=DEFAULT_WD14_TAGGER_REPO,
-        help="repo id for wd14 tagger on Hugging Face / Hugging Faceのwd14 taggerのリポジトリID",
+        help="repo id for wd14 tagger on Hugging Face",
     )
     parser.add_argument(
         "--model_dir",
         type=str,
         default="wd14_tagger_model",
-        help="directory to store wd14 tagger model / wd14 taggerのモデルを格納するディレクトリ",
+        help="directory to store wd14 tagger model",
     )
     parser.add_argument(
         "--force_download",
         action="store_true",
-        help="force downloading wd14 tagger models / wd14 taggerのモデルを再ダウンロードします",
+        help="force downloading wd14 tagger models",
     )
     parser.add_argument(
-        "--batch_size", type=int, default=1, help="batch size in inference / 推論時のバッチサイズ"
+        "--batch_size", type=int, default=1, help="batch size in inference"
     )
     parser.add_argument(
         "--max_data_loader_n_workers",
         type=int,
         default=None,
-        help="enable image reading by DataLoader with this number of workers (faster) / DataLoaderによる画像読み込みを有効にしてこのワーカー数を適用する（読み込みを高速化）",
+        help="enable image reading by DataLoader with this number of workers (faster)",
     )
     parser.add_argument(
         "--caption_extention",
         type=str,
         default=None,
-        help="extension of caption file (for backward compatibility) / 出力されるキャプションファイルの拡張子（スペルミスしていたのを残してあります）",
+        help="extension of caption file (for backward compatibility)",
     )
     parser.add_argument(
-        "--caption_extension", type=str, default=".txt", help="extension of caption file / 出力されるキャプションファイルの拡張子"
+        "--caption_extension", type=str, default=".txt", help="extension of caption file"
     )
     parser.add_argument(
-        "--thresh", type=float, default=0.35, help="threshold of confidence to add a tag / タグを追加するか判定する閾値"
+        "--thresh", type=float, default=0.35, help="threshold of confidence to add a tag"
     )
     parser.add_argument(
         "--general_threshold",
         type=float,
         default=None,
-        help="threshold of confidence to add a tag for general category, same as --thresh if omitted / generalカテゴリのタグを追加するための確信度の閾値、省略時は --thresh と同じ",
+        help="threshold of confidence to add a tag for general category, same as --thresh if omitted",
     )
     parser.add_argument(
         "--character_threshold",
         type=float,
         default=None,
-        help="threshold of confidence to add a tag for character category, same as --thres if omitted / characterカテゴリのタグを追加するための確信度の閾値、省略時は --thresh と同じ",
+        help="threshold of confidence to add a tag for character category, same as --thres if omitted",
     )
     parser.add_argument(
-        "--recursive", action="store_true", help="search for images in subfolders recursively / サブフォルダを再帰的に検索する"
+        "--recursive", action="store_true", help="search for images in subfolders recursively"
     )
     parser.add_argument(
         "--remove_underscore",
         action="store_true",
-        help="replace underscores with spaces in the output tags / 出力されるタグのアンダースコアをスペースに置き換える",
+        help="replace underscores with spaces in the output tags",
     )
     parser.add_argument(
         "--debug", action="store_true", help="debug mode"
@@ -448,51 +439,48 @@ def setup_parser() -> argparse.ArgumentParser:
         "--undesired_tags",
         type=str,
         default="",
-        help="comma-separated list of undesired tags to remove from the output / 出力から除外したいタグのカンマ区切りのリスト",
+        help="comma-separated list of undesired tags to remove from the output",
     )
     parser.add_argument(
-        "--frequency_tags", action="store_true", help="Show frequency of tags for images / タグの出現頻度を表示する"
+        "--frequency_tags", action="store_true", help="Show frequency of tags for images"
     )
     parser.add_argument(
-        "--onnx", action="store_true", help="use onnx model for inference / onnxモデルを推論に使用する"
+        "--onnx", action="store_true", help="use onnx model for inference "
     )
     parser.add_argument(
-        "--append_tags", action="store_true", help="Append captions instead of overwriting / 上書きではなくキャプションを追記する"
+        "--append_tags", action="store_true", help="Append captions instead of overwriting"
     )
     parser.add_argument(
-        "--use_rating_tags", action="store_true", help="Adds rating tags as the first tag / レーティングタグを最初のタグとして追加する",
+        "--use_rating_tags", action="store_true", help="Adds rating tags as the first tag",
     )
     parser.add_argument(
-        "--use_rating_tags_as_last_tag", action="store_true", help="Adds rating tags as the last tag / レーティングタグを最後のタグとして追加する",
+        "--use_rating_tags_as_last_tag", action="store_true", help="Adds rating tags as the last tag",
     )
     parser.add_argument(
-        "--character_tags_first", action="store_true", help="Always inserts character tags before the general tags / characterタグを常にgeneralタグの前に出力する",
+        "--character_tags_first", action="store_true", help="Always inserts character tags before the general tags",
     )
     parser.add_argument(
         "--always_first_tags",
         type=str,
         default=None,
         help="comma-separated list of tags to always put at the beginning, e.g. `1girl,1boy`"
-        + " / 必ず先頭に置くタグのカンマ区切りリスト、例 : `1girl,1boy`",
     )
     parser.add_argument(
         "--caption_separator",
         type=str,
         default=", ",
-        help="Separator for captions, include space if needed / キャプションの区切り文字、必要ならスペースを含めてください",
+        help="Separator for captions, include space if needed",
     )
     parser.add_argument(
         "--tag_replacement",
         type=str,
         default=None,
         help="tag replacement in the format of `source1,target1;source2,target2; ...`. Escape `,` and `;` with `\`. e.g. `tag1,tag2;tag3,tag4`"
-        + " / タグの置換を `置換元1,置換先1;置換元2,置換先2; ...`で指定する。`\` で `,` と `;` をエスケープできる。例: `tag1,tag2;tag3,tag4`",
     )
     parser.add_argument(
         "--character_tag_expand",
         action="store_true",
         help="expand tag tail parenthesis to another tag for character tags. `chara_name_(series)` becomes `chara_name, series`"
-        + " / キャラクタタグの末尾の括弧を別のタグに展開する。`chara_name_(series)` は `chara_name, series` になる",
     )
 
     return parser
@@ -503,7 +491,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # スペルミスしていたオプションを復元する
     if args.caption_extention is not None:
         args.caption_extension = args.caption_extention
 
