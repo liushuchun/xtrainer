@@ -35,6 +35,7 @@ def main(args):
 
     logger.info("merge tags to metadata json.")
     for image_path in tqdm(image_paths):
+        print(image_path)
         tags_path = image_path.with_suffix(args.caption_extension)
         tags = tags_path.read_text(encoding="utf-8").strip()
 

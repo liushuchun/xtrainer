@@ -1,0 +1,9 @@
+    Pillow==9.5.0
+    packaging==24.1
+    networkx==3.1
+    tifffile==2024.5.10
+    scipy==1.13.0
+    lazy_loader==0.4
+    imageio==2.34.1
+    scikit-image==0.21.0
+

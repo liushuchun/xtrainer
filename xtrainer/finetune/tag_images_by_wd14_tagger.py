@@ -9,8 +9,14 @@ import torch
 from huggingface_hub import hf_hub_download
 from PIL import Image
 from tqdm import tqdm
+import sys
+import os
 
-import library.train_util as train_util
+# 获取当前文件夹路径
+
+sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from library import train_util as train_util
 from library.utils import setup_logging, pil_resize
 
 setup_logging()
@@ -110,7 +116,6 @@ def main(args):
     else:
         logger.info("using existing wd14 tagger model")
 
-    # モデルを読み込む
     if args.onnx:
         import onnx
         import onnxruntime as ort
@@ -211,7 +216,6 @@ def main(args):
             elif source in rating_tags:
                 rating_tags[rating_tags.index(source)] = target
 
-    # 画像を読み込む
     train_data_dir_path = Path(args.train_data_dir)
     image_paths = train_util.glob_images_pathlib(train_data_dir_path, args.recursive)
     logger.info(f"found {len(image_paths)} images.")
